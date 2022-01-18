@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creating Infrastucture
+
+Resources:
+
+  # creation roles for lambda
+
+  LambdaChannelSenderRole1:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MlamdaSqsRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      Path: /
+
+
+  LambdaChannelGetterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MlamdaSqsS3Role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+      Path: /
+
+# creating SQS
+  SQSChannel:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: MSQSChannel
+
+  MSQSS3:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: MSQSS3
+
+#   -creating SQS Policy that takes notifications
+  DemoQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    DependsOn: MSQSS3
+    Properties:
+      PolicyDocument:
+        Id: MyDemoQueuePolicy
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Send_Permission
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: "*"
+            Condition:
+              ArnLike:
+                aws:SourceArn: "arn:aws:s3:::*"
+      Queues:
+        - Ref: MSQSS3
+
+# creating bucket
+
+  MyBucket:
+    Type: AWS::S3::Bucket
+    DependsOn:
+      - MSQSS3
+      - DemoQueuePolicy
+    Properties:
+      BucketName: mbucket111111
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Queue: 'arn:aws:sqs:us-east-1:062261762656:MSQSS3'
+
+# lambda creating
+
+  MChannelSender:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: MChannelSender1
+      Role: !GetAtt LambdaChannelSenderRole1.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: m-lambdatemplates
+        S3Key: ChannelSender/index.zip
+
+      Handler: index.lambda_handler
+
+  MS3Uploader1:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: MS3Uploader1
+      Role: !GetAtt LambdaChannelGetterRole.Arn
+      Runtime: python3.9
+      Code:
+        S3Bucket: m-lambdatemplates
+        S3Key: DataUploader/index.zip
+      Handler: lambda_function.lambda_handler
+      Layers:
+        - !Ref MChannelSenderLayer
+
+
+
+
+# lambda triggers
+  ChannelTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn: !GetAtt SQSChannel.Arn
+      FunctionName: !GetAtt MS3Uploader1.Arn
+
+
+# lambda layers creating
+  MChannelSenderLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.6
+        - python3.7
+        - python3.8
+        - python3.9
+      Content:
+        S3Bucket: m-lambdatemplates
+        S3Key: DataUploader/python.zip
+      LayerName: my-layer
+
+
+
+
