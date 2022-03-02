@@ -48,54 +48,15 @@ Resources:
         - arn:aws:iam::aws:policy/AWSLambda_FullAccess
       Path: /
 
-# creating SQS
-  SQSChannel:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: MSQSChannel
 
-  MSQSS3:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: MSQSS3
-
-#   -creating SQS Policy that takes notifications
-  DemoQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    DependsOn: MSQSS3
-    Properties:
-      PolicyDocument:
-        Id: MyDemoQueuePolicy
-        Version: '2012-10-17'
-        Statement:
-          - Sid: Send_Permission
-            Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: "*"
-            Condition:
-              ArnLike:
-                aws:SourceArn: "arn:aws:s3:::*"
-      Queues:
-        - Ref: MSQSS3
-
-# creating bucket
+  # creating bucket
 
   MyBucket:
     Type: AWS::S3::Bucket
-    DependsOn:
-      - MSQSS3
-      - DemoQueuePolicy
     Properties:
       BucketName: mbucket111111
-      NotificationConfiguration:
-        QueueConfigurations:
-          - Event: s3:ObjectCreated:Put
-            Queue: 'arn:aws:sqs:us-east-1:062261762656:MSQSS3'
 
-# lambda creating
+  # lambda creating
 
   MChannelSender:
     Type: AWS::Lambda::Function
@@ -125,7 +86,7 @@ Resources:
 
 
 
-# lambda triggers
+  # lambda triggers
   ChannelTrigger:
     Type: AWS::Lambda::EventSourceMapping
     Properties:
@@ -135,7 +96,7 @@ Resources:
       FunctionName: !GetAtt MS3Uploader1.Arn
 
 
-# lambda layers creating
+  # lambda layers creating
   MChannelSenderLayer:
     Type: AWS::Lambda::LayerVersion
     Properties:
@@ -148,6 +109,8 @@ Resources:
         S3Bucket: m-lambdatemplates
         S3Key: DataUploader/python.zip
       LayerName: my-layer
+
+
 
 
 
