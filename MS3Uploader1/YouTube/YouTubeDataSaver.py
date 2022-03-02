@@ -1,5 +1,6 @@
 import json
 
+
 from YouTube.YouTubeConnector import YouTubeConnector
 from DataGetters.ChannelDataGetter import ChannelDataGetter
 from DataGetters.VideoDataGetter import VideoDataGetter
@@ -22,4 +23,5 @@ class YouTubeDataLoader():
 
         result_json = {"root": channels}
 
+        
         return result_json
