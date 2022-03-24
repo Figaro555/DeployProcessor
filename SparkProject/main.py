@@ -1,16 +1,20 @@
-import time
-from datetime import datetime
-
 from pyspark import SparkContext
 
 from Connectors.AthenaConnector import AthenaConnector
-from Connectors.YouTubeConnector import YouTubeConnector
-from Extractors.YouTube.ChannelDataExtractor import ChannelDataExtractor
-from Extractors.YouTube.VideoDataExtractor import VideoDataExtractor
+from Loaders.Aggregation.QueryCreator.LastChannelViews import LastChannelViews
+from Loaders.Aggregation.QueryCreator.TopChannelSub import TopChannelSub
+from Loaders.Aggregation.QueryCreator.TopVideoComment import TopVideoComment
+from Loaders.Aggregation.QueryCreator.TopVideoLiked import TopVideoLiked
 from Loaders.ClearData.AthenaDataManager import AthenaDataManager
 from Loaders.QueryExecutor import QueryExecutor
-from Transformers.YouTubeTransformer import YouTubeTransformer
 from channel_ids import my_channels_id
+from Extractors.YouTube.ChannelDataExtractor import ChannelDataExtractor
+from Extractors.YouTube.VideoDataExtractor import VideoDataExtractor
+from Connectors.YouTubeConnector import YouTubeConnector
+from Transformers.YouTubeTransformer import YouTubeTransformer
+
+from datetime import datetime
+import time
 
 
 def main():
@@ -19,7 +23,6 @@ def main():
 
     cd = ChannelDataExtractor()
     vd = VideoDataExtractor()
-
     transformer = YouTubeTransformer()
     clear_data_loader = AthenaDataManager()
 
@@ -29,6 +32,9 @@ def main():
     time1 = str(datetime.fromtimestamp(int(time.time())))
 
     executor = QueryExecutor()
+
+    print(date)
+    print(datetime)
 
     channels_id_rdd = sc.parallelize(my_channels_id)
 
@@ -44,6 +50,18 @@ def main():
 
     clear_data.count()
     executor.execute(AthenaConnector(), "MSCK REPAIR TABLE `fact1`;")
+
+    queries = sc.parallelize([TopVideoComment().create_query(time1, date, hour),
+                              TopVideoLiked().create_query(time1, date, hour),
+                              TopChannelSub().create_query(time1, date, hour),
+                              LastChannelViews().create_query(time1, date, hour)])
+
+    agg = queries.map(lambda query: executor.execute(AthenaConnector(), query))
+
+    executor.execute(AthenaConnector(), "MSCK REPAIR TABLE `channelagg1`;")
+    executor.execute(AthenaConnector(), "MSCK REPAIR TABLE `videoagg1`;")
+
+    print(agg.collect())
 
 
 if __name__ == '__main__':
