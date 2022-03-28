@@ -2,7 +2,8 @@ from Extractors.YouTube.AbstractDataExtractor import AbstractDataExtractor
 
 
 class VideoDataExtractor(AbstractDataExtractor):
-    def get_data(self, channel, connector):
+
+    def get_video_ids(self, channel, connector):
         playlist_id = channel["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
 
         pl_response = None
@@ -21,6 +22,12 @@ class VideoDataExtractor(AbstractDataExtractor):
                 connector.index += 1
                 if connector.index >= connector.api_arr_len:
                     raise Exception('Keys are expired')
+
+        return pl_response
+
+    def get_data(self, channel, connector):
+
+        pl_response = self.get_video_ids(channel, connector)
 
         result = []
 
