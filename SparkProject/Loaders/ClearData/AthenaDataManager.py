@@ -15,7 +15,7 @@ class AthenaDataManager:
         vquery = VideoInsertQuery()
 
         connector = AthenaConnector()
-        executor = QueryExecutor()
+        executor = QueryExecutor('mdatabasea', 'AwsDataCatalog', 's3://mbucket111111/Athena/queryResults/')
 
         date = date_id.split("-")
         executor.execute(connector, cquery.create_query(channel))

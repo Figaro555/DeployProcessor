@@ -31,7 +31,7 @@ def main():
     date = str(datetime.date(t))
     time1 = str(datetime.fromtimestamp(int(time.time())))
 
-    executor = QueryExecutor()
+    executor = QueryExecutor('mdatabasea', 'AwsDataCatalog', 's3://mbucket111111/Athena/queryResults/')
 
     print(date)
     print(datetime)

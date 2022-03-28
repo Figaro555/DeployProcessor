@@ -2,16 +2,21 @@ import time
 
 
 class QueryExecutor:
+    def __init__(self, database, catalog, output_location):
+        self.database = database
+        self.catalog = catalog
+        self.output_location = output_location
+
     def execute(self, connector, query):
         try:
             q1 = connector.get_connection().start_query_execution(
                 QueryString=query,
                 QueryExecutionContext={
-                    'Database': 'mdatabasea',
-                    'Catalog': 'AwsDataCatalog'
+                    'Database': self.database,
+                    'Catalog': self.catalog
                 },
                 ResultConfiguration={
-                    'OutputLocation': 's3://mbucket111111/Athena/queryResults/'
+                    'OutputLocation': self.output_location
                 }
             )
 
