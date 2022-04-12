@@ -13,7 +13,7 @@ class VideoDataExtractor(AbstractDataExtractor):
                 pl_request = (connector.get_connection()).playlistItems().list(
                     part='contentDetails',
                     playlistId=playlist_id,
-                    maxResults=2
+                    maxResults=50
                 )
                 pl_response = pl_request.execute()
 
@@ -38,7 +38,8 @@ class VideoDataExtractor(AbstractDataExtractor):
                 try:
                     v_request = (connector.get_connection()).videos().list(
                         part='statistics, snippet',
-                        id=item["contentDetails"]["videoId"]
+                        id=item["contentDetails"]["videoId"],
+                        maxResults=50
                     )
                     v_response = v_request.execute()
                     result += [v_response]
@@ -48,5 +49,5 @@ class VideoDataExtractor(AbstractDataExtractor):
                     connector.index += 1
                     if connector.index >= connector.api_arr_len:
                         raise Exception('Keys are expired')
-        channel["videos"] = result
-        return channel
+
+        return result
