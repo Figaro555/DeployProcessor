@@ -7,3 +7,4 @@ SparkProject/Config
 /**/*.json
 /**/*.yaml
 /**/*.txt
+/**/__init__.py
