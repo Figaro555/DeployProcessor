@@ -1,10 +1,10 @@
 from datetime import datetime
 
-
-from Extractors.channel_ids import my_channels_id
 from pyspark.sql import DataFrame
 
+from Extractors.channel_ids import my_channels_id
 from Connectors.YouTubeConnector import YouTubeConnector
+from DataFrameProcessors.Aggregation.DataFrameAggregator import DataFrameAggregator
 from DataFrameProcessors.DataFrameCreators.ChannelFrameCreator import ChannelFrameCreator
 from DataFrameProcessors.DataFrameCreators.FactFrameCreator import FactFrameCreator
 from DataFrameProcessors.DataFrameCreators.VideoFrameCreator import VideoFrameCreator
@@ -22,6 +22,7 @@ class Executor:
         channel_df_cr = ChannelFrameCreator()
         video_df_cr = VideoFrameCreator()
         fact_df_cr = FactFrameCreator()
+        aggregator = DataFrameAggregator(ss, path_to_save)
 
         t = datetime.now()
         hour = t.hour
@@ -41,3 +42,5 @@ class Executor:
         fact_table.write.mode('append').partitionBy("date_id", "hour").json(path_to_save + "/Fact")
         video_table.write.mode('append').json(path_to_save + "/Video")
         channel_table.write.mode('append').json(path_to_save + "/Channel")
+
+        aggregator.agregate(fact_table, video_table, channel_table, date, hour)
