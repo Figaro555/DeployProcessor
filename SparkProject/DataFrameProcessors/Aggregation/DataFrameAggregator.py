@@ -1,48 +1,42 @@
 from pyspark.sql import DataFrame, SparkSession
 
-from DataFrameProcessors.Aggregation.DataFrameQueryExecutor import DataFrameQueryExecutor
-from DataFrameProcessors.queries import queries
+from DataFrameProcessors.Aggregation.DataFrameProcessor import DataFrameProcessor
+from DataFrameProcessors.queries import query_data
 
 
 class DataFrameAggregator():
     def __init__(self, spark_session: SparkSession, path_to_save):
-        self.executor = DataFrameQueryExecutor()
+        self.executor = DataFrameProcessor()
         self.spark_session = spark_session
         self.path_to_save = path_to_save
 
     def agregate(self, fact_table: DataFrame, video_table: DataFrame, channel_table: DataFrame, date, hour):
-
         video_and_fact = video_table.join(fact_table, video_table['id'] == fact_table['video_id'], 'left')
+        partitions = ['date_id',
+                      'hour',
+                      'category']
+        self.save_data_frame(
+            self.process_aggregation(channel_table, date, hour, "LastChannelView"),
+            partitions)
 
-        self.aggregate_last_channel_view(channel_table, date, hour)
-        self.aggregate_top_channel_subscribers(channel_table, date, hour)
-        self.aggregate_top_video_comment(video_and_fact)
-        self.aggregate_top_video_liked(video_and_fact)
+        self.save_data_frame(
+            self.process_aggregation(channel_table, date, hour, "TopChannelSubscribers"),
+            partitions)
 
-    def aggregate_last_channel_view(self, channel_table, date, hour):
-        self.executor.run_query(channel_table, queries["LastChannelView"].format(date, hour), self.spark_session). \
-            write.mode('append').partitionBy('date_id',
-                                             'hour',
-                                             'category') \
-            .json(self.path_to_save + "/Aggregated")
+        self.save_data_frame(
+            self.process_aggregation(video_and_fact, date, hour, "TopVideoComment"),
+            partitions)
 
-    def aggregate_top_channel_subscribers(self, channel_table, date, hour):
-        self.executor.run_query(channel_table, queries["TopChannelSubscribers"].format(date, hour), self.spark_session) \
-            .write.mode('append').partitionBy('date_id',
-                                              'hour',
-                                              'category') \
-            .json(self.path_to_save + "/Aggregated")
+        self.save_data_frame(
+            self.process_aggregation(video_and_fact, date, hour, "TopVideoLiked"),
+            partitions)
 
-    def aggregate_top_video_comment(self, video_and_fact):
-        self.executor.run_query(video_and_fact, queries["TopVideoComment"], self.spark_session). \
-            write.mode('append').partitionBy('date_id',
-                                             'hour',
-                                             'category') \
-            .json(self.path_to_save + "/Aggregated")
+    def process_aggregation(self, data_frame, date, hour, category):
+        return self.executor.process_data_frame(data_frame, query_data[category]["columns"],
+                                                query_data[category]["count"],
+                                                query_data[category]["column_to_compare"],
+                                                query_data[category]["desc"], category, hour, date)
 
-    def aggregate_top_video_liked(self, video_and_fact):
-        self.executor.run_query(video_and_fact, queries["TopVideoLiked"], self.spark_session) \
-            .write.mode('append').partitionBy('date_id',
-                                              'hour',
-                                              'category') \
+    def save_data_frame(self, data_frame: DataFrame, partitions: list):
+        data_frame.write.mode('append').partitionBy(*partitions) \
             .json(self.path_to_save + "/Aggregated")
